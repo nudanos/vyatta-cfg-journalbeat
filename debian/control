@@ -1,14 +1,17 @@
 Source: vyatta-cfg-journalbeat
 Section: utils
 Priority: optional
-Maintainer: Vyatta Package Maintainers <DL-vyatta-help@att.com>
-Standards-Version: 3.9.8
-Build-Depends: debhelper (>=10),
-  dh-python,
-  dh-yang,
-  python3-all,
-  python3-setuptools
+Maintainer: NuDanOS Maintainers <jon@fernandez.tech>
+Standards-Version: 4.7.2
+Build-Depends: debhelper-compat (= 13),
+ dh-python,
+ dh-yang,
+ python3-all,
+ python3-setuptools
 X-Python3-Version: >= 3.3
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/nudanos/vyatta-cfg-journalbeat.git
+Vcs-Browser: https://github.com/nudanos/vyatta-cfg-journalbeat
 
 Package: vyatta-cfg-journalbeat
 Architecture: all
