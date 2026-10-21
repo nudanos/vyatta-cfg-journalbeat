@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+import collections
+import importlib
 from unittest import TestCase
 from unittest.mock import Mock, patch
-import collections
 
 
 MockVrf = collections.namedtuple('MockVrf', "name")
@@ -19,11 +20,14 @@ class MockVyattaConfigdClient:
     def tree_get_full_dict(self, path):
         if path == self.jb_path:
             return self.cfg
+        return None
 
     def node_exists(self, db, path):
+        del db    # one config for every datastore
         return path == self.jb_path
 
 
+# pylint: disable-next=too-few-public-methods ; reason: a mock of one call
 class MockVyattaVrfManager:
     def __init__(self, vrfs=None):
         self.vrfs = [] if vrfs is None else vrfs
@@ -39,8 +43,9 @@ class TestJournalbeatConfigBase(TestCase):
                           "vrfmanager.vrfmanager": Mock()}
         patch.dict('sys.modules', mocked_modules).start()
 
-        from config.journalbeat_cfg import get_vyatta_config as _get_vyatta_cfg
-        self.get_vyatta_config = _get_vyatta_cfg
+        # imported after the mocks above are in place
+        self.jb = importlib.import_module('config.journalbeat_cfg')
+        self.get_vyatta_config = self.jb.get_vyatta_config
 
         self.configd_client = MockVyattaConfigdClient({})
         self.vrf_manager = MockVyattaVrfManager()
@@ -87,7 +92,6 @@ class TestDeterminingConfigLocation(TestJournalbeatConfigBase):
 class TestExportOptions(TestJournalbeatConfigBase):
 
     def test_full_tree(self):
-        from config.journalbeat_cfg import build_options
         device_cfg = {
             "logstash": {
                 "endpoints": [
@@ -117,7 +121,7 @@ class TestExportOptions(TestJournalbeatConfigBase):
             },
         }
 
-        build_options(output_cfg, device_cfg)
+        self.jb.build_options(output_cfg, device_cfg)
 
         self.assertDictEqual(output_cfg, expected_cfg)
 
@@ -125,8 +129,6 @@ class TestExportOptions(TestJournalbeatConfigBase):
 class TestInputOptions(TestJournalbeatConfigBase):
 
     def test_defaults(self):
-        from config.journalbeat_cfg import build_input_options
-
         output_cfg = {}
         device_cfg = {}
         expected_cfg = {
@@ -135,7 +137,7 @@ class TestInputOptions(TestJournalbeatConfigBase):
             ],
         }
 
-        build_input_options(output_cfg, device_cfg)
+        self.jb.build_input_options(output_cfg, device_cfg)
 
         self.assertEqual(expected_cfg, output_cfg)
 
@@ -143,8 +145,6 @@ class TestInputOptions(TestJournalbeatConfigBase):
 class TestOutputLogstashConfig(TestJournalbeatConfigBase):
 
     def test_simple_hostname(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -165,13 +165,11 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
-        self.assertEquals(expected_cfg, output_cfg)
+        self.assertEqual(expected_cfg, output_cfg)
 
     def test_simple_ipv4(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -192,13 +190,11 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
-        self.assertEquals(expected_cfg, output_cfg)
+        self.assertEqual(expected_cfg, output_cfg)
 
     def test_simple_ipv6(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -219,13 +215,11 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
-        self.assertEquals(expected_cfg, output_cfg)
+        self.assertEqual(expected_cfg, output_cfg)
 
     def test_simple_hostname_alt_port(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -247,13 +241,11 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
-        self.assertEquals(expected_cfg, output_cfg)
+        self.assertEqual(expected_cfg, output_cfg)
 
     def test_simple_ipv4_alt_port(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -275,13 +267,11 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
-        self.assertEquals(expected_cfg, output_cfg)
+        self.assertEqual(expected_cfg, output_cfg)
 
     def test_simple_ipv6_alt_port(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -303,13 +293,11 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
         self.assertEqual(expected_cfg, output_cfg)
 
     def test_multi_hostnames(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -334,13 +322,11 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
-        self.assertEquals(expected_cfg, output_cfg)
+        self.assertEqual(expected_cfg, output_cfg)
 
     def test_multi_hostnames_and_ports(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -367,13 +353,11 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
-        self.assertEquals(expected_cfg, output_cfg)
+        self.assertEqual(expected_cfg, output_cfg)
 
     def test_multi_ipv4s_and_ports(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -400,13 +384,11 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
-        self.assertEquals(expected_cfg, output_cfg)
+        self.assertEqual(expected_cfg, output_cfg)
 
     def test_multi_ipv6s_and_ports(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -433,13 +415,11 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
-        self.assertEquals(expected_cfg, output_cfg)
+        self.assertEqual(expected_cfg, output_cfg)
 
     def test_multi_mixed_and_ports(self):
-        from config.journalbeat_cfg import build_logstash_output
-
         output_cfg = {}
         input_cfg = {
             "endpoints": [
@@ -473,6 +453,6 @@ class TestOutputLogstashConfig(TestJournalbeatConfigBase):
             }
         }
 
-        build_logstash_output(output_cfg, input_cfg)
+        self.jb.build_logstash_output(output_cfg, input_cfg)
 
-        self.assertEquals(expected_cfg, output_cfg)
+        self.assertEqual(expected_cfg, output_cfg)

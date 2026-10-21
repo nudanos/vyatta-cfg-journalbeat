@@ -9,3 +9,9 @@ override_dh_installinit:
 
 %:
 	dh $@ --with python3,yang
+
+# NuDanOS: unit tests
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	python3 -m unittest -v config/tests/test_journalbeat_cfg.py
+endif

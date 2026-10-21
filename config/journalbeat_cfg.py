@@ -1,13 +1,4 @@
 #!/usr/bin/python3
-
-import ipaddress
-import sys
-import yaml
-
-from configobj import ConfigObj
-from vrfmanager.vrfmanager import VrfManager
-from vyatta import configd
-
 """
 Journalbeat configuration builder for Vyatta vRouter
 
@@ -17,15 +8,16 @@ All rights reserved.
 SPDX-License-Identifier: GPL-2.0-only
 """
 
+import ipaddress
+import sys
+
+import yaml
+from configobj import ConfigObj
+from vrfmanager.vrfmanager import VrfManager
+from vyatta import configd
+
 
 JB_PATH = 'system journal export'
-
-
-def build_journalbeat_options(config):
-    """
-    Build the config tree for all options under the "journalbeat" branch
-    """
-    pass
 
 
 def build_logstash_output(cfg, device_config):
@@ -57,14 +49,7 @@ def build_logstash_output(cfg, device_config):
     cfg['output.logstash'] = lgstsh_cfg
 
 
-def build_logging(config):
-    """
-    Build the config tree for all options under the "logging" branch
-    """
-    pass
-
-
-def build_input_options(cfg, device_config):
+def build_input_options(cfg, _device_config):
     """
     Build the config for input options
     """
@@ -96,8 +81,7 @@ def get_vyatta_config(configd_client, vrf_manager):
     # does not exist at all, we simply exit early and let the wrapper take
     # care of cleaning up and stopping journalbeat.
     for vrf in vrf_manager.get_vrfs():
-        ri_path = 'routing routing-instance {} {}'.format(
-                vrf.name, JB_PATH)
+        ri_path = f'routing routing-instance {vrf.name} {JB_PATH}'
         if configd_client.node_exists(configd_client.CANDIDATE, ri_path):
             vrf_name = vrf.name
             break  # YANG only allows one instance of journalbeat
@@ -108,10 +92,8 @@ def get_vyatta_config(configd_client, vrf_manager):
     if vrf_name is None:
         return vrf_name, vyatta_cfg  # None, None
 
-    elif vrf_name != 'default':
-        cfg_path = 'routing routing-instance {} {}'
-        cfg_path = cfg_path.format(vrf_name, JB_PATH)
-
+    if vrf_name != 'default':
+        cfg_path = f'routing routing-instance {vrf_name} {JB_PATH}'
     else:
         cfg_path = JB_PATH
 
@@ -120,11 +102,9 @@ def get_vyatta_config(configd_client, vrf_manager):
     return vrf_name, vyatta_cfg
 
 
-if __name__ == '__main__':
+def main():
     # Read vyatta config
-    configd_client = configd.Client()
-    vrf_manager = VrfManager()
-    vrf_name, vyatta_cfg = get_vyatta_config(configd_client, vrf_manager)
+    vrf_name, vyatta_cfg = get_vyatta_config(configd.Client(), VrfManager())
 
     if vrf_name is None or not vyatta_cfg:
         sys.exit(-1)  # Nothing configured, wrapper will shutdown JB
@@ -132,6 +112,10 @@ if __name__ == '__main__':
     jb_cfg = {}
     build_options(jb_cfg, vyatta_cfg)
 
-    with open('/etc/journalbeat.yml', 'w') as config_file:
+    with open('/etc/journalbeat.yml', 'w', encoding='utf-8') as config_file:
         yaml.dump(jb_cfg, config_file, default_flow_style=False)
     write_envfile(vrf_name)
+
+
+if __name__ == '__main__':
+    main()
